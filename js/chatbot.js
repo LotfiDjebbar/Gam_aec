@@ -4,19 +4,10 @@
  */
 
 // ==========================================
-// CONFIGURATION (CAMOUFLAGE ANTI-SCANNER)
+// CONFIGURATION
 // ==========================================
-// Pour éviter que GitHub ne désactive votre clé, nous la coupons en 3 morceaux.
-// 1. Générez une NOUVELLE clé sur https://aistudio.google.com/app/apikey
-// 2. Mettez les 4 premiers caractères dans K1 (souvent "AIza")
-// 3. Mettez le reste dans K2 et K3 en coupant au milieu.
-
-const K1 = "AIza"; 
-const K2 = "SyBjt8m6tr7qlPimYVpQx"; 
-const K3 = "YP2Pc4nuHiRcCw"; 
-
-const GEMINI_API_KEY = (K2 === "ICI_MILIEU_DE_LA_CLE") ? "" : (K1 + K2 + K3);
-
+// La clé est récupérée depuis le fichier js/config.js (ignoré par Git)
+const GEMINI_API_KEY = (typeof CONFIG !== 'undefined') ? CONFIG.GEMINI_API_KEY : "";
 const GEMINI_MODEL = "gemini-1.5-flash";
 
 // ==========================================
@@ -186,7 +177,7 @@ Tu dois IMPÉRATIVEMENT structurer ta réponse exactement selon ce format (sans 
 
   if (!GEMINI_API_KEY) {
     removeTypingIndicator();
-    appendMessage('bot', `⚠️ **Clé API non configurée**.\nPour utiliser le Chatbot sans que les utilisateurs n'aient à saisir de clé :\n\n1. Générez une NOUVELLE clé sur [Google AI Studio](https://aistudio.google.com/app/apikey).\n2. Coupez-la en morceaux et remplissez les variables \`K1\`, \`K2\`, et \`K3\` au début de \`js/chatbot.js\`.`, true);
+    appendMessage('bot', `⚠️ **Clé API manquante**.\nVeuillez configurer la variable \`GEMINI_API_KEY\` dans \`js/chatbot.js\`.`, true);
     chatSendBtn.disabled = false;
     return;
   }
