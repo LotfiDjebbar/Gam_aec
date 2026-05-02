@@ -16,9 +16,9 @@
 const REVERSED_API_KEY = "InNGxPo84sK5zLtDIjKWc8Ss_II821pZBySazIA"; 
 
 // L'application va remettre la clé à l'endroit dynamiquement
-let GEMINI_API_KEY = REVERSED_API_KEY === "ICI_COLLEZ_VOTRE_CLE_INVERSEE" 
-  ? "" 
-  : REVERSED_API_KEY.split('').reverse().join('');
+let GEMINI_API_KEY = (REVERSED_API_KEY && REVERSED_API_KEY.length > 20) 
+  ? REVERSED_API_KEY.split('').reverse().join('')
+  : "";
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 
