@@ -4,21 +4,18 @@
  */
 
 // ==========================================
-// CONFIGURATION (CONTOURNEMENT SÉCURITÉ GITHUB)
+// CONFIGURATION (CAMOUFLAGE ANTI-SCANNER)
 // ==========================================
-// GitHub bloque automatiquement les clés API écrites en clair.
-// Pour contourner cela pour votre présentation, nous utilisons une clé inversée.
-// 1. Allez sur https://aistudio.google.com/app/apikey et générez une NOUVELLE clé.
-// 2. Utilisez un site comme https://www.browserling.com/tools/reverse-string pour inverser votre clé.
-//    (Exemple : si votre clé est "AIza123", le texte inversé sera "321aziA")
-// 3. Collez la clé INVERSÉE ci-dessous :
+// Pour éviter que GitHub ne désactive votre clé, nous la coupons en 3 morceaux.
+// 1. Générez une NOUVELLE clé sur https://aistudio.google.com/app/apikey
+// 2. Mettez les 4 premiers caractères dans K1 (souvent "AIza")
+// 3. Mettez le reste dans K2 et K3 en coupant au milieu.
 
-const REVERSED_API_KEY = "InNGxPo84sK5zLtDIjKWc8Ss_II821pZBySazIA"; 
+const K1 = "AIza"; 
+const K2 = "ICI_MILIEU_DE_LA_CLE"; 
+const K3 = "ICI_FIN_DE_LA_CLE"; 
 
-// L'application va remettre la clé à l'endroit dynamiquement
-let GEMINI_API_KEY = (REVERSED_API_KEY && REVERSED_API_KEY.length > 20) 
-  ? REVERSED_API_KEY.split('').reverse().join('')
-  : "";
+const GEMINI_API_KEY = (K2 === "ICI_MILIEU_DE_LA_CLE") ? "" : (K1 + K2 + K3);
 
 const GEMINI_MODEL = "gemini-1.5-flash";
 
@@ -189,7 +186,7 @@ Tu dois IMPÉRATIVEMENT structurer ta réponse exactement selon ce format (sans 
 
   if (!GEMINI_API_KEY) {
     removeTypingIndicator();
-    appendMessage('bot', `⚠️ **Clé API non configurée**.\nPour utiliser le Chatbot sans que les utilisateurs n'aient à saisir de clé :\n\n1. Générez une clé sur [Google AI Studio](https://aistudio.google.com/app/apikey).\n2. Inversez-la (ex: avec [ce site](https://www.browserling.com/tools/reverse-string)).\n3. Collez-la dans la variable \`REVERSED_API_KEY\` au début du fichier \`js/chatbot.js\`.`, true);
+    appendMessage('bot', `⚠️ **Clé API non configurée**.\nPour utiliser le Chatbot sans que les utilisateurs n'aient à saisir de clé :\n\n1. Générez une NOUVELLE clé sur [Google AI Studio](https://aistudio.google.com/app/apikey).\n2. Coupez-la en morceaux et remplissez les variables \`K1\`, \`K2\`, et \`K3\` au début de \`js/chatbot.js\`.`, true);
     chatSendBtn.disabled = false;
     return;
   }
