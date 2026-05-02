@@ -13,7 +13,7 @@
 //    (Exemple : si votre clé est "AIza123", le texte inversé sera "321aziA")
 // 3. Collez la clé INVERSÉE ci-dessous :
 
-const REVERSED_API_KEY = "ICI_COLLEZ_VOTRE_CLE_INVERSEE"; 
+const REVERSED_API_KEY = "InNGxPo84sK5zLtDIjKWc8Ss_II821pZBySazIA"; 
 
 // L'application va remettre la clé à l'endroit dynamiquement
 let GEMINI_API_KEY = REVERSED_API_KEY === "ICI_COLLEZ_VOTRE_CLE_INVERSEE" 
