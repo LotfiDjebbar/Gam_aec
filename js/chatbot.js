@@ -20,7 +20,7 @@ let GEMINI_API_KEY = (REVERSED_API_KEY && REVERSED_API_KEY.length > 20)
   ? REVERSED_API_KEY.split('').reverse().join('')
   : "";
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-1.5-flash";
 
 // ==========================================
 // UI ELEMENTS
