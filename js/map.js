@@ -7,10 +7,13 @@
  */
 
 window.mapInstance = null;
-let mapMarkers  = [];
+let mapMarkers   = [];
 let currentLayer = 'score';
 let sidebarOpen  = true;
 window.plannerMap = null;
+let communeGeoJSON = null;   // loaded GeoJSON data
+let geoLayer       = null;   // Leaflet GeoJSON layer
+let communeMapping = {};     // CSV to GeoJSON name mapping
 
 // ─── Colour helpers ──────────────────────────────────
 function scoreColor(s) {
@@ -53,7 +56,20 @@ function initMap() {
     maxZoom: 18
   }).addTo(window.mapInstance);
 
-  renderMarkers();
+  // Load GeoJSON commune boundaries and mapping dictionary
+  Promise.all([
+    fetch('data/commune_mapping.json').then(r => r.json()).catch(() => ({})),
+    fetch('data/dza_admin2.geojson').then(r => r.json())
+  ])
+  .then(([mapping, geo]) => {
+    communeMapping = mapping;
+    communeGeoJSON = geo;
+    renderMarkers();
+  })
+  .catch(() => {
+    console.warn('GeoJSON or mapping not found, falling back to circle markers');
+    renderMarkers();
+  });
 }
 
 // ─── Marker style per layer ──────────────────────────
@@ -128,28 +144,111 @@ function getFilteredData() {
   });
 }
 
-// ─── Render markers ───────────────────────────────────
+// ─── Render markers (choropleth polygons) ─────────────
+let baseGeoLayer = null; // persistent base boundary layer
+
 function renderMarkers() {
+  // Clean up previous colored layers
   mapMarkers.forEach(m => window.mapInstance.removeLayer(m));
   mapMarkers = [];
+  if (geoLayer) { window.mapInstance.removeLayer(geoLayer); geoLayer = null; }
 
   const filtered = getFilteredData();
   document.getElementById('map-count').textContent = filtered.length + ' / ' + DATA.length;
 
-  filtered.forEach(d => {
-    if (!d.Lat_Commune || !d.Lon_Commune) return;
-    const { color, size } = getMarkerStyle(d, currentLayer);
-    const m = L.circleMarker([d.Lat_Commune, d.Lon_Commune], {
-      radius: size,
-      fillColor: color,
-      color: '#fff',
-      weight: 0.8,
-      fillOpacity: 0.85
-    });
-    m.bindPopup(buildPopupHTML(d), { maxWidth: 270 });
-    mapMarkers.push(m);
-    m.addTo(window.mapInstance);
+  // Build lookup: GeoJSON name (lowercase) → data record
+  const dataLookup = {};
+  filtered.forEach(d => { 
+    const mappedName = communeMapping[d.Commune] || d.Commune;
+    dataLookup[mappedName.toLowerCase()] = d; 
   });
+
+  if (communeGeoJSON) {
+    // 1) Base layer: show ALL commune boundaries (light grey, once)
+    if (!baseGeoLayer) {
+      baseGeoLayer = L.geoJSON(communeGeoJSON, {
+        style: () => ({
+          fillColor: '#e8ede5',
+          color: '#c5d1be',
+          weight: 0.5,
+          fillOpacity: 0.25,
+          opacity: 0.5
+        }),
+        interactive: false
+      }).addTo(window.mapInstance);
+    }
+
+    // 2) Colored overlay: only communes in filtered data
+    geoLayer = L.geoJSON(communeGeoJSON, {
+      filter: feature => {
+        return !!dataLookup[feature.properties.adm2_name.toLowerCase()];
+      },
+      style: feature => {
+        const d = dataLookup[feature.properties.adm2_name.toLowerCase()];
+        const { color } = getMarkerStyle(d, currentLayer);
+        return {
+          fillColor: color,
+          color: '#3a7d50',
+          weight: 0.8,
+          fillOpacity: 0.6,
+          opacity: 0.5
+        };
+      },
+      onEachFeature: (feature, layer) => {
+        const d = dataLookup[feature.properties.adm2_name.toLowerCase()];
+        if (!d) return;
+        layer.bindPopup(buildPopupHTML(d), { maxWidth: 270 });
+        layer.on('mouseover', function () {
+          this.setStyle({ weight: 2.5, color: '#1a5c35', fillOpacity: 0.8 });
+          this.bringToFront();
+        });
+        layer.on('mouseout', function () {
+          geoLayer.resetStyle(this);
+        });
+      }
+    }).addTo(window.mapInstance);
+
+    // 3) Fallback: circleMarker for unmatched communes
+    const matchedNames = new Set(communeGeoJSON.features.map(f => f.properties.adm2_name.toLowerCase()));
+    
+    filtered.forEach(d => {
+      const mappedName = communeMapping[d.Commune] || d.Commune;
+      if (matchedNames.has(mappedName.toLowerCase())) return;
+      if (!d.Lat_Commune || !d.Lon_Commune) return;
+      if (d.Lat_Commune < 18.9 || d.Lat_Commune > 37.2) return;
+      if (d.Lon_Commune < -8.7 || d.Lon_Commune > 12.0) return;
+      const { color, size } = getMarkerStyle(d, currentLayer);
+      const m = L.circleMarker([d.Lat_Commune, d.Lon_Commune], {
+        radius: size,
+        fillColor: color,
+        color: '#fff',
+        weight: 0.8,
+        fillOpacity: 0.85
+      });
+      m.bindPopup(buildPopupHTML(d), { maxWidth: 270 });
+      mapMarkers.push(m);
+      m.addTo(window.mapInstance);
+    });
+
+  } else {
+    // No GeoJSON — fallback to circle markers
+    filtered.forEach(d => {
+      if (!d.Lat_Commune || !d.Lon_Commune) return;
+      if (d.Lat_Commune < 18.9 || d.Lat_Commune > 37.2) return;
+      if (d.Lon_Commune < -8.7 || d.Lon_Commune > 12.0) return;
+      const { color, size } = getMarkerStyle(d, currentLayer);
+      const m = L.circleMarker([d.Lat_Commune, d.Lon_Commune], {
+        radius: size,
+        fillColor: color,
+        color: '#fff',
+        weight: 0.8,
+        fillOpacity: 0.85
+      });
+      m.bindPopup(buildPopupHTML(d), { maxWidth: 270 });
+      mapMarkers.push(m);
+      m.addTo(window.mapInstance);
+    });
+  }
 
   updateLegend();
 }
@@ -165,7 +264,10 @@ function buildPopupHTML(d) {
     <div class="popup-row"><span class="popup-label">Population 2026</span><span class="popup-val">${fmtNum(d.Pop_2026)}</span></div>
     <div class="popup-row"><span class="popup-label">Concurrents</span><span class="popup-val">${d.Nb_Agences_Concurrents_Total}</span></div>
     <div class="popup-row"><span class="popup-label">Présence GAM</span><span class="popup-val" style="color:${d.Has_GAM ? '#2e7d4f' : '#e53935'}">${d.Has_GAM ? 'Oui' : 'Non'}</span></div>
-    <button class="popup-btn" onclick="openScorecardPanel('${d.Commune.replace(/'/g, "\\'")}')">Voir le scorecard complet</button>`;
+    <div style="margin-top: 10px;">
+      <button class="popup-btn" style="margin-bottom: 5px; width: 100%;" onclick="simulateAgency('${d.Commune.replace(/'/g, "\\'")}')">Simuler l'ouverture</button>
+      <button class="popup-btn" onclick="openScorecardPanel('${d.Commune.replace(/'/g, "\\'")}')">Voir le scorecard complet</button>
+    </div>`;
 }
 
 // ─── Scorecard side panel ─────────────────────────────

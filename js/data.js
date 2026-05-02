@@ -91,6 +91,26 @@ function loadData() {
           stringFields.forEach(function(f) {
             if (!row[f]) row[f] = '';
           });
+
+          // ── Coordinate validation & correction ──────────────
+          // Algeria bounding box: Lat [18.9, 37.2], Lon [-8.7, 12.0]
+          var lat = row.Lat_Commune;
+          var lon = row.Lon_Commune;
+
+          // Detect clearly swapped values
+          var latValid = lat >= 18.9 && lat <= 37.2 && lon >= -8.7 && lon <= 12.0;
+          var swapValid = lon >= 18.9 && lon <= 37.2 && lat >= -8.7 && lat <= 12.0;
+
+          if (!latValid && swapValid) {
+            // Swap them
+            row.Lat_Commune = lon;
+            row.Lon_Commune = lat;
+          } else if (!latValid) {
+            // Cannot fix - null out so marker is skipped
+            row.Lat_Commune = 0;
+            row.Lon_Commune = 0;
+          }
+
           return row;
         });
 

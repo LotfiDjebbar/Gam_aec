@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/chat.css">
+<link rel="stylesheet" href="css/news.css">
 </head>
 <body>
 
@@ -27,7 +29,7 @@
   <button class="tab-btn" onclick="showTab(2)" id="tabBtn2"><img src="images/classement_icon.png" alt="Classements" class="tab-icon"> Classements</button>
   <button class="tab-btn" onclick="showTab(3)" id="tabBtn3"><img src="images/scorcard_icon.png" alt="Scorecard" class="tab-icon"> Scorecard</button>
   <button class="tab-btn" onclick="showTab(4)" id="tabBtn4"><img src="images/analytics_icon.png" alt="Analytiques" class="tab-icon"> Analytiques</button>
-  <button class="tab-btn" onclick="showTab(5)" id="tabBtn5"><img src="images/planificateur_icon.png" alt="Planificateur" class="tab-icon"> Planificateur</button>
+  <button class="tab-btn" onclick="showTab(5)" id="tabBtn5"><img src="images/planificateur_icon.png" alt="Simulateur" class="tab-icon"> Simulateur</button>
 </nav>
 
 <!-- KPI BAR -->
@@ -38,6 +40,20 @@
   <div class="kpi"><div class="kpi-label">Potentiel total marché</div><div class="kpi-value yellow" id="k-rev">—</div></div>
   <div class="kpi"><div class="kpi-label">Score IA moyen</div><div class="kpi-value" id="k-score">—</div></div>
   <div class="kpi"><div class="kpi-label">Prob. succès moyenne</div><div class="kpi-value yellow" id="k-prob">—</div></div>
+  <div id="simulation-badge" style="display:none; align-items:center; background:#ff9800; color:#000; padding:0 12px; border-radius:8px; font-weight:700; font-size:12px; margin-left:auto; gap:8px;">
+    <span>🧪 MODE SIMULATION (<span id="sim-count">0</span>)</span>
+    <button onclick="resetSimulation()" style="background:rgba(0,0,0,0.2); border:none; color:#000; font-weight:bold; cursor:pointer; padding:4px 8px; border-radius:4px; font-size:11px;">RÉINITIALISER</button>
+  </div>
+</div>
+
+<!-- NEWS TICKER -->
+<div id="news-ticker-container">
+  <div class="news-ticker-label">Actualités Marché</div>
+  <div class="news-ticker-scroll">
+    <div class="news-ticker-content" id="news-ticker-content">
+      <span class="news-item">Chargement des actualités du marché de l'assurance en Algérie...</span>
+    </div>
+  </div>
 </div>
 
 <!-- LOADING SCREEN -->
@@ -133,6 +149,7 @@
         <option value="25">25 / page</option>
         <option value="50">50 / page</option>
         <option value="100">100 / page</option>
+        <option value="9999">Toutes les communes</option>
       </select>
       <button class="btn primary" onclick="exportCSV()">Exporter CSV</button>
     </div>
@@ -179,11 +196,15 @@
 
   <!-- TAB 4: ANALYTICS -->
   <div class="page" id="tab4">
+    <div class="analytics-header">
+      <h2>Tableau de Bord Analytique</h2>
+      <p>Vue d'ensemble des indicateurs clés du marché de l'assurance en Algérie</p>
+    </div>
     <div class="analytics-grid">
       <div class="chart-card"><div class="chart-title">Top 15 Wilayas — Score IA moyen</div><div class="chart-wrap"><canvas id="ch-wilayas"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Parts de marché — GAM &amp; Concurrents</div><div class="chart-wrap"><canvas id="ch-pie"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Top 20 Communes nationales</div><div class="chart-wrap"><canvas id="ch-top20"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Distribution des Scores IA</div><div class="chart-wrap"><canvas id="ch-hist"></canvas></div></div>
-      <div class="chart-card"><div class="chart-title">Parts de marché — Concurrents</div><div class="chart-wrap"><canvas id="ch-pie"></canvas></div></div>
       <div class="chart-card full"><div class="chart-title">Déficit d'agences par Wilaya (Top 15)</div><div class="chart-wrap"><canvas id="ch-deficit"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Zones industrielles — Top 15 communes</div><div class="chart-wrap"><canvas id="ch-indus"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Marché sismique par Wilaya</div><div class="chart-wrap"><canvas id="ch-seismic"></canvas></div></div>
@@ -191,36 +212,51 @@
     </div>
   </div>
 
-  <!-- TAB 5: PLANNER -->
+  <!-- TAB 5: SIMULATEUR -->
   <div class="page" id="tab5">
     <div id="planner-config">
       <div>
-        <div class="config-title">Agences à ouvrir</div>
-        <input type="number" class="n-input" id="plan-n" min="1" max="20" value="5">
-      </div>
-      <div>
-        <div class="config-title">Critères d'optimisation</div>
-        <div class="criteria-info">
-          Score IA le plus élevé<br>
-          Aucune présence GAM actuelle<br>
-          CA potentiel maximisé<br>
-          Diversification géographique (max 2/wilaya)<br>
-          Population minimale &gt; 15 000 hab.
+        <div class="config-title">Simulateur d'Impact Global</div>
+        <div class="criteria-info" style="font-size: 13px; line-height: 1.6;">
+          Ce module liste toutes les agences que vous avez ajoutées virtuellement depuis l'onglet <b>Carte</b>.<br><br>
+          L'algorithme recalcule en temps réel :<br>
+          • La baisse d'attractivité (Score IA).<br>
+          • Le marché couvert (CA Sécurisé).<br>
+          • Le déficit comblé.
         </div>
       </div>
-      <button class="btn primary" onclick="buildPlan()" style="width:100%;padding:12px;font-size:14px;font-weight:700">Générer le plan optimal</button>
-      <div id="plan-kpis" class="plan-kpis" style="display:none">
-        <div class="plan-kpi"><div class="plan-kpi-label">Agences</div><div class="plan-kpi-val" id="pk-n">—</div></div>
-        <div class="plan-kpi"><div class="plan-kpi-label">CA Total</div><div class="plan-kpi-val" id="pk-rev">—</div></div>
-        <div class="plan-kpi"><div class="plan-kpi-label">Population</div><div class="plan-kpi-val" id="pk-pop">—</div></div>
+
+      <div style="margin-top: 16px;">
+        <div class="config-title">Rechercher une Commune</div>
+        <input
+          id="sim-commune-input"
+          type="text"
+          list="sim-communes-datalist"
+          placeholder="Ex: Draria, Oran, Tizi Ouzou..."
+          autocomplete="off"
+          style="width:100%; padding:10px 14px; border:1px solid #dde3de; border-radius:10px; font-size:14px; margin-bottom:8px; box-sizing:border-box; outline:none; font-family:inherit;"
+          onkeydown="if(event.key==='Enter') addSimulationFromInput()"
+        />
+        <datalist id="sim-communes-datalist"></datalist>
+        <button class="btn primary" onclick="addSimulationFromInput()" style="width:100%;padding:11px;font-size:14px;font-weight:700;">Ajouter à la Simulation</button>
       </div>
-      <button class="btn" onclick="exportPlan()" id="plan-export-btn" style="display:none;width:100%;font-weight:700">Exporter le plan (CSV)</button>
+
+      <div style="margin-top:12px;">
+        <button class="btn" onclick="resetSimulation()" style="width:100%; font-weight:600; background:#fff3e0; color:#e65100; border:1px solid #ffe0b2;">Réinitialiser la Simulation</button>
+      </div>
+
+      <div id="plan-kpis" class="plan-kpis" style="display:none; margin-top: 20px;">
+        <div class="plan-kpi"><div class="plan-kpi-label">Agences Simulées</div><div class="plan-kpi-val" id="pk-n">—</div></div>
+        <div class="plan-kpi"><div class="plan-kpi-label">CA Sécurisé Total</div><div class="plan-kpi-val" id="pk-rev">—</div></div>
+        <div class="plan-kpi"><div class="plan-kpi-label">Population Couverte</div><div class="plan-kpi-val" id="pk-pop">—</div></div>
+      </div>
+      <button class="btn" onclick="exportSimulation()" id="plan-export-btn" style="display:none;width:100%;font-weight:700;margin-top:10px;">Exporter le Rapport (CSV)</button>
     </div>
     <div id="planner-results">
       <div id="planner-map"></div>
       <div id="planner-list">
         <div class="empty-state" style="padding:24px">
-          <div class="empty-text" style="font-size:14px">Cliquez sur "Générer le plan optimal"</div>
+          <div class="empty-text" style="font-size:14px">Chargement du simulateur...</div>
         </div>
       </div>
     </div>
@@ -228,10 +264,36 @@
 
 </div><!-- /pages -->
 
+<!-- CHATBOT WIDGET -->
+<div id="chat-widget">
+  <div id="chat-window" class="chat-hidden">
+    <div class="chat-header">
+      <div class="chat-title">GAM Assistant IA</div>
+      <button id="chat-close-btn" class="chat-close-btn">✕</button>
+    </div>
+    <div id="chat-messages" class="chat-messages">
+      <div class="chat-msg bot-msg">
+        Bonjour ! Je suis l'assistant IA de GAM. Posez-moi des questions sur une commune (ex: "Qu'en penses-tu d'Oran ?").
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <input type="text" id="chat-input" placeholder="Posez votre question..." autocomplete="off">
+      <button id="chat-send-btn">Envoyer</button>
+    </div>
+  </div>
+  <button id="chat-toggle-btn" class="chat-toggle-btn">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    </svg>
+  </button>
+</div>
+
 <!-- External libraries -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <!-- App modules — order matters -->
 <script src="js/data.js"></script>
@@ -240,6 +302,9 @@
 <script src="js/scorecard.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/planner.js"></script>
+<script src="js/news.js"></script>
+<script src="js/chatbot.js"></script>
+<script src="js/geocode.js"></script>
 <script src="js/app.js"></script>
 
 </body>

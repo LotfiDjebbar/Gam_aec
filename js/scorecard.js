@@ -109,9 +109,14 @@ function buildScorecardHTML(d, compact) {
 
   ${compact ? '' : `
   <div class="sc-grid">
-    <div class="sc-card full">
+    <div class="sc-card">
       <div class="sc-card-title">Analyse multi-critères</div>
-      <canvas id="sc-radar" height="180"></canvas>
+      <div style="position:relative;height:200px"><canvas id="sc-radar"></canvas></div>
+    </div>
+
+    <div class="sc-card">
+      <div class="sc-card-title">Évolution démographique</div>
+      <div style="position:relative;height:200px"><canvas id="sc-pop-trend"></canvas></div>
     </div>
 
     <div class="sc-card">
@@ -127,7 +132,7 @@ function buildScorecardHTML(d, compact) {
 
     <div class="sc-card">
       <div class="sc-card-title">Concurrence</div>
-      <div class="sc-stat-row"><span class="sc-stat-label">Total concurrents</span><span class="sc-stat-value" style="color:#e53935;font-size:16px;font-weight:800">${d.Nb_Agences_Concurrents_Total}</span></div>
+      <div class="sc-stat-row"><span class="sc-stat-label">Total concurrents</span><span class="sc-stat-value" style="color:#e53935;font-size:14px;font-weight:800">${d.Nb_Agences_Concurrents_Total}</span></div>
       ${['SAA','ALLIANCE','AXA','CAAR','CAAT','CASH','CIAR','TRUST'].map(c =>
         `<div class="sc-stat-row"><span class="sc-stat-label">${c}</span><span class="sc-stat-value">${d['Nb_Agences_' + c] || 0}</span></div>`
       ).join('')}
@@ -152,11 +157,6 @@ function buildScorecardHTML(d, compact) {
       <div class="sc-stat-row"><span class="sc-stat-label">Polices sismiques</span><span class="sc-stat-value">${fmtNum(d.Nombre_Total_Polices_assurances_seismes)}</span></div>
       <div class="sc-stat-row"><span class="sc-stat-label">Capacité théorique</span><span class="sc-stat-value">${d.Capacite_Agences_Theorique}</span></div>
       <div class="sc-stat-row"><span class="sc-stat-label">Déficit agences</span><span class="sc-stat-value" style="color:var(--yellow)">${d.Deficit_Agences}</span></div>
-    </div>
-
-    <div class="sc-card full">
-      <div class="sc-card-title">Évolution démographique</div>
-      <canvas id="sc-pop-trend" height="110"></canvas>
     </div>
 
     <div class="sc-card full">
@@ -198,22 +198,28 @@ function buildScorecardCharts(d) {
         labels: ['Force démographique', 'Activité économique', 'Déficit couverture', 'Marché sismique', 'Pression compétitive', 'Marché jeunes'],
         datasets: [{
           data: vals,
-          backgroundColor: 'rgba(46,125,79,.12)',
+          backgroundColor: 'rgba(46,125,79,.10)',
           borderColor: '#2e7d4f',
-          pointBackgroundColor: '#d4a017',
-          borderWidth: 2,
-          pointRadius: 4
+          pointBackgroundColor: '#f5c518',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          borderWidth: 2.5,
+          pointRadius: 5,
+          pointHoverRadius: 7
         }]
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 1200, easing: 'easeOutQuart' },
         plugins: { legend: { display: false } },
         scales: {
           r: {
-            backgroundColor: 'rgba(232,245,233,.4)',
-            grid: { color: 'var(--border)' },
-            ticks: { color: 'var(--text3)', font: { size: 9 }, backdropColor: 'transparent' },
-            pointLabels: { color: 'var(--text2)', font: { size: 11, weight: '600' } },
+            backgroundColor: 'rgba(232,245,233,.3)',
+            grid: { color: 'rgba(46,125,79,0.08)', circular: true },
+            angleLines: { color: 'rgba(46,125,79,0.08)' },
+            ticks: { color: '#7a9985', font: { size: 9, family: "'Plus Jakarta Sans'" }, backdropColor: 'transparent', stepSize: 25 },
+            pointLabels: { color: '#4a6655', font: { size: 11, weight: '600', family: "'Plus Jakarta Sans'" } },
             min: 0, max: 100
           }
         }
@@ -223,6 +229,11 @@ function buildScorecardCharts(d) {
 
   const popCtx = document.getElementById('sc-pop-trend');
   if (popCtx) {
+    const ctx2d = popCtx.getContext('2d');
+    const gradFill = ctx2d.createLinearGradient(0, 0, 0, 140);
+    gradFill.addColorStop(0, 'rgba(46,125,79,0.15)');
+    gradFill.addColorStop(1, 'rgba(46,125,79,0.01)');
+
     scChartInstances.pop = new Chart(popCtx, {
       type: 'line',
       data: {
@@ -230,20 +241,43 @@ function buildScorecardCharts(d) {
         datasets: [{
           data: [d.Pop_1998, d.Pop_2008, d.Pop_2026],
           borderColor: '#2e7d4f',
-          backgroundColor: 'rgba(46,125,79,.08)',
+          backgroundColor: gradFill,
           fill: true,
           tension: 0.4,
-          pointBackgroundColor: '#d4a017',
-          pointRadius: 5,
-          borderWidth: 2
+          pointBackgroundColor: '#f5c518',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          pointRadius: 6,
+          pointHoverRadius: 8,
+          borderWidth: 2.5
         }]
       },
       options: {
         responsive: true,
-        plugins: { legend: { display: false } },
+        maintainAspectRatio: false,
+        animation: { duration: 1200, easing: 'easeOutQuart' },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(26, 46, 31, 0.92)',
+            titleFont: { size: 13, family: "'Plus Jakarta Sans'", weight: '800' },
+            bodyFont: { size: 12, family: "'Plus Jakarta Sans'" },
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: { label: ctx => ' Population: ' + fmtNum(ctx.parsed.y) }
+          }
+        },
         scales: {
-          x: { grid: { color: 'var(--border)' }, ticks: { color: 'var(--text3)' } },
-          y: { grid: { color: 'var(--border)' }, ticks: { color: 'var(--text3)', callback: v => fmtNum(v) } }
+          x: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: { color: '#7a9985', font: { size: 11, family: "'Plus Jakarta Sans'", weight: '600' } }
+          },
+          y: {
+            grid: { color: 'rgba(46,125,79, 0.07)', borderDash: [4, 4] },
+            border: { display: false },
+            ticks: { color: '#7a9985', font: { size: 10, family: "'Plus Jakarta Sans'" }, callback: v => fmtNum(v) }
+          }
         }
       }
     });

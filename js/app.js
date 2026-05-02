@@ -24,13 +24,19 @@ function showTab(n) {
   if (n === 1 && window.mapInstance) {
     setTimeout(function() { mapInstance.invalidateSize(); }, 100);
   }
-  if (n === 4 && !chartsBuilt) {
+  if (n === 4) {
+    // Always rebuild charts to reflect latest/simulated data
     buildCharts();
     chartsBuilt = true;
   }
-  if (n === 5 && !plannerMapInited) {
-    initPlannerMap();
-    plannerMapInited = true;
+  if (n === 5) {
+    if (!plannerMapInited) {
+      if (typeof initPlannerMap === 'function') initPlannerMap();
+      plannerMapInited = true;
+    }
+    if (window.plannerMap) {
+      setTimeout(function() { window.plannerMap.invalidateSize(); }, 100);
+    }
   }
 }
 window.showTab = showTab;
@@ -118,7 +124,17 @@ window.addEventListener('load', function() {
 
         initLogoDrop();
 
+        // Save Original Data for Simulation Reset
+        window.ORIGINAL_DATA = JSON.stringify(window.DATA);
+        window.SIMULATED_AGENCIES = 0;
+
+        // Init simulator search autocomplete
+        if (typeof initSimulatorSearch === 'function') initSimulatorSearch();
+
         setLoadingProgress(100, 'Prêt !');
+
+        // Background: re-geocode communes with missing/bad coords using Nominatim
+        geocodeFixCommunes();
 
         // Small delay so user sees 100% before hiding
         setTimeout(function() {
@@ -141,3 +157,87 @@ window.addEventListener('load', function() {
       setLoadingError('Erreur fatale: ' + err.message);
     });
 });
+
+// --- Simulation Logic ---------------------------------
+function getPercentile(data, key, percentile) {
+  const values = data.map(d => d[key]).sort((a, b) => a - b);
+  const index = (percentile / 100) * (values.length - 1);
+  const lower = Math.floor(index);
+  const upper = lower + 1;
+  const weight = index % 1;
+  if (upper >= values.length) return values[lower];
+  return values[lower] * (1 - weight) + values[upper] * weight;
+}
+
+window.simulateAgency = function(communeName) {
+  const d = window.DATA.find(c => c.Commune === communeName);
+  if (!d) return;
+
+  // Compute p95 globals if not computed yet
+  if (!window.P95) {
+    window.P95 = {
+      deficit: Math.max(1, getPercentile(window.DATA, 'Deficit_Agences', 95)),
+      indus: Math.max(1, getPercentile(window.DATA, 'Nb_Zones_Industrielles', 95)),
+      pop: Math.max(1, getPercentile(window.DATA, 'Pop_Active_Est_2026', 95))
+    };
+  }
+
+  // 1. Add Agency
+  d.Has_GAM = 1;
+  d.Nb_Agences_GAM = (d.Nb_Agences_GAM || 0) + 1;
+  
+  // 2. Exact Python Math: Deficit
+  // Capacite_Agences_Theorique is roughly Pop_2026 / 15000
+  const capaciteTheorique = Math.floor(d.Pop_2026 / 15000);
+  d.Deficit_Agences = Math.max(0, capaciteTheorique - d.Nb_Agences_Concurrents_Total - d.Nb_Agences_GAM);
+  
+  // 3. Exact Python Math: Target Probability
+  let rawScore = (
+    0.50 * (Math.min(d.Deficit_Agences, window.P95.deficit) / window.P95.deficit) +
+    0.30 * (Math.min(d.Nb_Zones_Industrielles, window.P95.indus) / window.P95.indus) +
+    0.20 * (Math.min(d.Pop_Active_Est_2026, window.P95.pop) / window.P95.pop)
+  ) * 100;
+
+  // 4. Cannibalization Penalty
+  if (d.Nb_Agences_GAM > 0) {
+    rawScore = rawScore * 0.2;
+  }
+  
+  d.Score_IA_Predictif = rawScore;
+  d['Probabilite_Succes_%'] = rawScore;
+  
+  window.SIMULATED_AGENCIES++;
+  document.getElementById('simulation-badge').style.display = 'flex';
+  document.getElementById('sim-count').textContent = window.SIMULATED_AGENCIES;
+
+  // Update Simulation Cart if available
+  if (typeof updateSimulationCart === 'function') {
+    updateSimulationCart(communeName);
+  }
+  
+  // Global Re-render
+  if (typeof applyFilters === 'function') applyFilters();
+  if (typeof initTable === 'function') initTable();
+  if (typeof initCharts === 'function') initCharts();
+  
+  if (window.mapInstance) window.mapInstance.closePopup();
+};
+
+window.resetSimulation = function() {
+  if (!window.ORIGINAL_DATA) return;
+  
+  window.DATA = JSON.parse(window.ORIGINAL_DATA);
+  window.SIMULATED_AGENCIES = 0;
+  window.SIMULATED_COMMUNES_LIST = [];
+  
+  document.getElementById('simulation-badge').style.display = 'none';
+  
+  if (typeof updateSimulationCart === 'function') {
+    updateSimulationCart();
+  }
+  
+  if (typeof applyFilters === 'function') applyFilters();
+  if (typeof initTable === 'function') initTable();
+  if (typeof initCharts === 'function') initCharts();
+};
+
