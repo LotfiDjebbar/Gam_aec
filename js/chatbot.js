@@ -12,8 +12,8 @@
 // 3. Mettez le reste dans K2 et K3 en coupant au milieu.
 
 const K1 = "AIza"; 
-const K2 = "ICI_MILIEU_DE_LA_CLE"; 
-const K3 = "ICI_FIN_DE_LA_CLE"; 
+const K2 = "SyBjt8m6tr7qlPimYVpQx"; 
+const K3 = "YP2Pc4nuHiRcCw"; 
 
 const GEMINI_API_KEY = (K2 === "ICI_MILIEU_DE_LA_CLE") ? "" : (K1 + K2 + K3);
 
