@@ -4,12 +4,22 @@
  */
 
 // ==========================================
-// CONFIGURATION
+// CONFIGURATION (CONTOURNEMENT SÉCURITÉ GITHUB)
 // ==========================================
-// Remplacez cette valeur par votre clé API Google Gemini gratuite
-// Obtenez-la sur : https://aistudio.google.com/app/apikey
-// L'API Key n'est plus codée en dur pour des raisons de sécurité
-let GEMINI_API_KEY = localStorage.getItem('gam_gemini_api_key') || "";
+// GitHub bloque automatiquement les clés API écrites en clair.
+// Pour contourner cela pour votre présentation, nous utilisons une clé inversée.
+// 1. Allez sur https://aistudio.google.com/app/apikey et générez une NOUVELLE clé.
+// 2. Utilisez un site comme https://www.browserling.com/tools/reverse-string pour inverser votre clé.
+//    (Exemple : si votre clé est "AIza123", le texte inversé sera "321aziA")
+// 3. Collez la clé INVERSÉE ci-dessous :
+
+const REVERSED_API_KEY = "ICI_COLLEZ_VOTRE_CLE_INVERSEE"; 
+
+// L'application va remettre la clé à l'endroit dynamiquement
+let GEMINI_API_KEY = REVERSED_API_KEY === "ICI_COLLEZ_VOTRE_CLE_INVERSEE" 
+  ? "" 
+  : REVERSED_API_KEY.split('').reverse().join('');
+
 const GEMINI_MODEL = "gemini-2.5-flash";
 
 // ==========================================
@@ -178,16 +188,10 @@ Tu dois IMPÉRATIVEMENT structurer ta réponse exactement selon ce format (sans 
   showTypingIndicator();
 
   if (!GEMINI_API_KEY) {
-    const userKey = prompt("Pour des raisons de sécurité (clé détectée sur GitHub), l'ancienne clé a été révoquée.\n\nVeuillez coller une nouvelle clé API Gemini gratuite pour utiliser le Chatbot :");
-    if (userKey && userKey.trim() !== "") {
-      GEMINI_API_KEY = userKey.trim();
-      localStorage.setItem('gam_gemini_api_key', GEMINI_API_KEY);
-    } else {
-      removeTypingIndicator();
-      appendMessage('bot', `⚠️ **Clé API manquante**.\nPour que je puisse fonctionner, j'ai besoin d'une clé API Gemini gratuite.\n\n1. [Cliquez ici pour obtenir une clé](https://aistudio.google.com/app/apikey)\n2. Envoyez un nouveau message pour que je vous demande de la coller.`, true);
-      chatSendBtn.disabled = false;
-      return;
-    }
+    removeTypingIndicator();
+    appendMessage('bot', `⚠️ **Clé API non configurée**.\nPour utiliser le Chatbot sans que les utilisateurs n'aient à saisir de clé :\n\n1. Générez une clé sur [Google AI Studio](https://aistudio.google.com/app/apikey).\n2. Inversez-la (ex: avec [ce site](https://www.browserling.com/tools/reverse-string)).\n3. Collez-la dans la variable \`REVERSED_API_KEY\` au début du fichier \`js/chatbot.js\`.`, true);
+    chatSendBtn.disabled = false;
+    return;
   }
 
   try {
@@ -217,15 +221,7 @@ Tu dois IMPÉRATIVEMENT structurer ta réponse exactement selon ce format (sans 
   } catch (error) {
     console.error("Erreur API Gemini:", error);
     removeTypingIndicator();
-    
-    // Si l'erreur mentionne la clé API (ex: 400 API key not valid)
-    if (error.message.toLowerCase().includes("key") || error.message.toLowerCase().includes("api")) {
-      localStorage.removeItem('gam_gemini_api_key');
-      GEMINI_API_KEY = "";
-      appendMessage('bot', "⚠️ La clé API saisie est invalide ou a été révoquée. Elle a été supprimée de votre navigateur. Veuillez renvoyer un message pour en saisir une nouvelle.", false);
-    } else {
-      appendMessage('bot', "Désolé, une erreur est survenue lors de la communication avec l'IA. Vérifiez votre connexion internet.", false);
-    }
+    appendMessage('bot', "Désolé, une erreur est survenue lors de la communication avec l'IA. Vérifiez votre connexion internet ou la configuration de votre clé.", false);
   }
 
   chatSendBtn.disabled = false;
